@@ -1,0 +1,10 @@
+app: sample_rag.app:run
+dataset: .ragdiff/datasets/dataset.jsonl
+repeats: 1
+metrics: []
+thresholds: {}
+docs:
+  - examples/sample_rag/docs
+variants:
+  - name: baseline
+  - name: candidate
