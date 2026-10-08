@@ -67,3 +67,21 @@ def execute(
         finally:
             context.case_id.reset(case_token)
     return records
+
+
+def score_records(
+    records: list[RunRecord],
+    cases: list[DatasetCase],
+    metrics: list[Metric],
+) -> list[RunRecord]:
+    """Score already-collected records in place (used for subprocess runs)."""
+    by_question = {case.question: case for case in cases}
+    for record in records:
+        output = RunOutput(
+            answer=record.answer,
+            contexts=record.contexts,
+            metadata=record.metadata,
+        )
+        case = by_question[record.question]
+        record.scores = {metric.name: metric.score(case, output) for metric in metrics}
+    return records

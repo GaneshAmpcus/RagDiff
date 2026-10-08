@@ -9,10 +9,11 @@ from typing import Annotated
 import typer
 
 from ragdiff.api import RagDiff
-from ragdiff.bootstrap.dataset import read_dataset
+from ragdiff.bootstrap.dataset import read_dataset, runnable_cases
 from ragdiff.config.loader import load_config
 from ragdiff.contract import load_app
 from ragdiff.llm.litellm_client import LiteLLMClient
+from ragdiff.metrics.builtin import build_builtin_metrics
 from ragdiff.observability import context
 from ragdiff.observability.logger import setup_logging
 from ragdiff.runner.executor import execute
@@ -52,6 +53,20 @@ def bootstrap(
 
 
 @app.command()
+def baseline(
+    config_path: Annotated[Path, typer.Option("--config", "-c")] = Path("evals.yaml"),
+) -> None:
+    """Bootstrap a dataset if needed, then run and score a baseline."""
+    config = load_config(config_path)
+    llm_client = LiteLLMClient() if config.docs and config.model else None
+    result = RagDiff(config, llm_client=llm_client).baseline()
+    typer.echo(f"Baseline {result.run_id}: {result.cases} case(s)")
+    for metric, stats in sorted(result.summary.items()):
+        typer.echo(f"  {metric}: {stats['mean']:.4f} (n={stats['count']})")
+    typer.echo(str(Path(".ragdiff") / "runs" / result.run_id))
+
+
+@app.command()
 def run(
     config_path: Annotated[Path, typer.Option("--config", "-c")] = Path("evals.yaml"),
 ) -> None:
@@ -59,11 +74,12 @@ def run(
     config = load_config(config_path)
     if not config.app:
         raise typer.BadParameter("Config must define an 'app' entrypoint")
-    if config.metrics:
-        raise typer.BadParameter(
-            "Metric implementations must be registered through the Python API"
-        )
-    cases = read_dataset(config.dataset)
+    cases = runnable_cases(read_dataset(config.dataset))
+    metrics = (
+        build_builtin_metrics(config.metrics, judge_model=config.judge_model)
+        if config.metrics
+        else None
+    )
     run_id = uuid.uuid4().hex
     run_dir = Path(".ragdiff") / "runs" / run_id
     token = context.run_id.set(run_id)
@@ -75,6 +91,7 @@ def run(
             cases,
             [Variant(name="current", app=load_app(config.app))],
             repeats=config.repeats,
+            metrics=metrics,
         )
         storage = FileSystemStorage()
         storage.write_jsonl(
@@ -94,6 +111,55 @@ def run(
         raise
     finally:
         context.run_id.reset(token)
+
+
+@app.command()
+def compare(
+    config_path: Annotated[Path, typer.Option("--config", "-c")] = Path("evals.yaml"),
+    base: Annotated[str | None, typer.Option(help="Base variant name")] = None,
+    head: Annotated[str | None, typer.Option(help="Head variant name")] = None,
+    base_ref: Annotated[str | None, typer.Option(help="Base git revision")] = None,
+    head_ref: Annotated[str | None, typer.Option(help="Head git revision")] = None,
+    repository: Annotated[Path, typer.Option(help="Git repo for --base-ref")] = Path("."),
+    report_path: Annotated[
+        Path | None, typer.Option(help="Also write the Markdown report here")
+    ] = None,
+) -> None:
+    """Compare base vs head (variants or git revisions); exit 1 on a failed gate."""
+    config = load_config(config_path)
+    ragdiff = RagDiff(config)
+    if base_ref or head_ref:
+        if not (base_ref and head_ref):
+            raise typer.BadParameter("Pass both --base-ref and --head-ref")
+        result = ragdiff.compare_refs(
+            base_ref=base_ref, head_ref=head_ref, repository=repository
+        )
+    else:
+        if not (base and head):
+            raise typer.BadParameter("Pass --base and --head, or both git refs")
+        result = ragdiff.compare(base=base, head=head)
+    typer.echo(f"Verdict: {result.verdict}")
+    if result.attribution:
+        typer.echo(
+            f"Culprit: {result.attribution.factor} "
+            f"(tier {result.attribution.tier}, "
+            f"confidence {result.attribution.confidence:.2f})"
+        )
+        typer.echo(f"Fix: {result.attribution.suggestion}")
+    for metric, entry in sorted(result.differences.items()):
+        typer.echo(
+            f"  {metric}: {entry['delta']:+.4f} "
+            f"({len(entry['regressed'])} regressed question(s))"
+        )
+    typer.echo(str(Path(".ragdiff") / "runs" / result.run_id))
+    if report_path is not None:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            FileSystemStorage().read_text(Path("runs") / result.run_id / "report.md"),
+            encoding="utf-8",
+        )
+    if result.verdict == "fail":
+        raise typer.Exit(code=1)
 
 
 @app.command()

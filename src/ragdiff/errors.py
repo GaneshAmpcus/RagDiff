@@ -16,3 +16,7 @@ class IntegrationError(RagDiffError):
 
 class StorageError(RagDiffError):
     """A storage operation failed."""
+
+
+class RunnerError(RagDiffError):
+    """Running an app variant in isolation failed."""

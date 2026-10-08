@@ -67,12 +67,26 @@ ragdiff --help
 ragdiff init
 ragdiff bootstrap --config evals.yaml
 ragdiff run --config evals.yaml
-ragdiff report --run-id <run-id>
+ragdiff report <run-id>
+ragdiff compare --base baseline --head candidate
+ragdiff compare --base-ref main --head-ref HEAD   # exits 1 on a failed gate
 ```
 
 The CLI accepts injected integrations through the Python API; external LLM and
 Ragas adapters are optional extras. See [examples/sample_rag](examples/sample_rag)
 for a small app and evaluation config.
+
+## GitHub Action
+
+Run RagDiff on every pull request and gate the merge; see
+[docs/github-action.md](docs/github-action.md).
+
+```yaml
+- uses: actions/checkout@v4
+  with: { fetch-depth: 0 }
+- uses: GaneshAmpcus/RagDiff@v0.1.0
+  with: { config: evals.yaml }
+```
 
 ## Architecture
 

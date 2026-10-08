@@ -1,0 +1,6 @@
+{"question": "What does RagDiff provide tools and interfaces for?", "reference": "evaluating retrieval-augmented generation applications", "source": "manual", "status": "approved", "metadata": {}}
+{"question": "What is RagDiff used to evaluate?", "reference": "retrieval-augmented generation applications", "source": "manual", "status": "approved", "metadata": {}}
+{"question": "Which kind of applications does RagDiff evaluate?", "reference": "retrieval-augmented generation applications", "source": "manual", "status": "approved", "metadata": {}}
+{"question": "What do applications return to RagDiff?", "reference": "an answer and may also return retrieved contexts and metadata", "source": "manual", "status": "approved", "metadata": {}}
+{"question": "What may applications also return besides an answer?", "reference": "retrieved contexts and metadata", "source": "manual", "status": "approved", "metadata": {}}
+{"question": "Do applications return retrieved contexts and metadata?", "reference": "an answer and may also return retrieved contexts and metadata", "source": "manual", "status": "approved", "metadata": {}}

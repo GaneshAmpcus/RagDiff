@@ -1,0 +1,8 @@
+# Keyless demo config used by .github/workflows/ragdiff.yml (no LLM calls).
+app: sample_rag.app:run
+app_dir: examples
+dataset: examples/sample_rag/dataset.jsonl
+repeats: 1
+metrics: [context_contains_reference]
+thresholds:
+  context_contains_reference: -0.05

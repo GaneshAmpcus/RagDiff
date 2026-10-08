@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ragdiff.errors import ConfigError
+
+CaseStatus = Literal["pending", "approved", "rejected"]
+CaseSource = Literal["synthetic", "manual", "production"]
 
 
 class DatasetCase(BaseModel):
@@ -14,6 +17,8 @@ class DatasetCase(BaseModel):
 
     question: str
     reference: str | None = None
+    source: CaseSource = "manual"
+    status: CaseStatus = "approved"
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -43,3 +48,8 @@ def write_dataset(path: str | Path, cases: list[DatasetCase]) -> None:
     with dataset_path.open("w", encoding="utf-8") as stream:
         for case in cases:
             stream.write(json.dumps(case.model_dump(), ensure_ascii=False) + "\n")
+
+
+def runnable_cases(cases: list[DatasetCase]) -> list[DatasetCase]:
+    """Cases that take part in a run: everything the reviewer has not rejected."""
+    return [case for case in cases if case.status != "rejected"]

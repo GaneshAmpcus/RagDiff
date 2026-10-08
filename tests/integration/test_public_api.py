@@ -49,7 +49,7 @@ def test_public_api_compares_and_persists_variants(tmp_path, monkeypatch) -> Non
     report = ragdiff.compare(base="baseline", head="candidate")
 
     assert report.verdict == "pass"
-    assert report.culprit == "answer_length"
+    assert report.culprit is None  # attribution only runs on a failed gate
     run_dir = tmp_path / "custom-artifacts" / "runs" / report.run_id
     assert (run_dir / "results.jsonl").is_file()
     assert (run_dir / "meta.json").is_file()
