@@ -10,7 +10,7 @@ from pathlib import Path
 from ragdiff import RunOutput
 
 DOCS_DIR = Path(__file__).parent / "docs"
-DEFAULTS = {"chunk_size": 800, "top_k": 3}
+DEFAULTS = {"chunk_size": 20, "top_k": 3}
 
 
 def _tokens(text: str) -> set[str]:
